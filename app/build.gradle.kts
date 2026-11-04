@@ -13,13 +13,17 @@ android {
         versionCode = 400
         versionName = "4.0-apk"
         ndk { abiFilters += listOf("armeabi-v7a", "arm64-v8a") }
-        python { version = "3.11" }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
+}
+chaquopy {
+    defaultConfig {
+        version = "3.11"
+    }
 }
 dependencies {
     implementation("dev.rikka.shizuku:api:13.1.5")
