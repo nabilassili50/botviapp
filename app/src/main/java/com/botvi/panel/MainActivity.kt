@@ -51,6 +51,7 @@ class MainActivity : Activity() {
             setOnClickListener { web.loadUrl("http://127.0.0.1:8080$u") }
         }
         bar.addView(tb("اللوحة", "/"), LinearLayout.LayoutParams(0, -2, 1f))
+        bar.addView(tb("معايرة المباني", "/layout"), LinearLayout.LayoutParams(0, -2, 1f))
         bar.addView(tb("ملفات التشخيص", "/debug"), LinearLayout.LayoutParams(0, -2, 1f))
         root.addView(status)
         root.addView(bar)

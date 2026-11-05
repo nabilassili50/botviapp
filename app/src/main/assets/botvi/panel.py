@@ -3,6 +3,7 @@ from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 import shizuku
 import tasks.guard as guard
 import tasks.zoom as zoom
+import layout
 import vdisplay
 D = os.path.dirname(os.path.abspath(__file__))
 SF = os.path.join(D, "settings.json")
@@ -15,7 +16,7 @@ if os.path.exists(SF): S.update(json.load(open(SF)))
 shizuku.CFG = S      # تجاوز شاشة اللمس يدوياً من settings.json (touch_path ...)
 ST = {"running": False, "shizuku": False, "last_beat": 0, "last_action": time.time()}
 LAST = {}
-VERSION = "v4.1-apk"      # يظهر في أعلى اللوحة وفي أول السجل: غيّره مع كل نسخة جديدة
+VERSION = "v4.2-apk"      # يظهر في أعلى اللوحة وفي أول السجل: غيّره مع كل نسخة جديدة
 LASTSHOT = {"png": None, "t": 0}
 LOGS = []; EV = []; EVID = [0]; CUR = [""]; BOOT = time.time()
 CNT = {"ok": 0, "warn": 0, "err": 0, "info": 0}; STAT = {"runs": {}, "errs": {}, "lasterr": {}, "marches": 0}
@@ -55,12 +56,18 @@ def _run_task(key, manual):
         except Exception as e: log("خطأ في الحارس: %s" % e)
         if key != "zoom" and not shizuku.STOP.is_set():
             try:
-                if guard.NEED_ZOOM[0]: guard.enter(log, S)           # 1) أغلق النوافذ الإعلانية عند الدخول
+                entering = guard.NEED_ZOOM[0]
+                if entering: guard.enter(log, S)                     # 1) أغلق النوافذ الإعلانية عند الدخول
                 if S.get("zoom", True) and zoom.need(S):                                      # 2) صغّر القلعة
                     zoom.zoom_out(log, S, probe=not guard.NEED_ZOOM[0])
                     guard.clear(log, S)                               # إعلان ظهر أثناء التصغير؟ أغلقه قبل المهمة
+                elif entering: guard.NEED_ZOOM[0] = False
+                if layout.DATA and (entering or not layout.T[0]):    # 3) حدّد مواقع المباني من جديد عند كل دخول
+                    layout.refresh(log)
             except shizuku.Stopped as e: log("أُوقفت المهمة: %s (%s)" % (key, e)); return
             except Exception as e: log("خطأ في الزوم: %s" % e)
+        try: layout.apply(key, mod)
+        except Exception as e: log("المباني: تعذّر تطبيق المواقع: %s" % e)
         try: r = mod.run(log, S)
         except shizuku.Stopped as e:
             if isinstance(e, shizuku.LeftGame): LAST.pop(key, None)       # لم تكتمل: تُعاد عند عودة اللعبة
@@ -193,6 +200,14 @@ class H(BaseHTTPRequestHandler):
                 png = LASTSHOT["png"]
                 self.send(png or b"", "image/png", {"X-Shot-Live": int(live), "X-Shot-Age": int(time.time() - LASTSHOT["t"]) if png else -1})
             except Exception as e: self.send(b"", "image/png", {"X-Shot-Live": 0, "X-Shot-Age": -1})
+        elif self.path == "/layout": self.send(open(os.path.join(D, "layout.html"), "rb").read(), "text/html; charset=utf-8")
+        elif self.path == "/api/layout":
+            items = []
+            for k in layout.MAP:
+                d = layout.DATA.get(k)
+                items.append({"key": k, "name": NAMES.get(k, k), "learned": bool(d), "ref": d["ref"] if d else None, "loc": list(layout.LOC[k]) if k in layout.LOC else None})
+            self.send({"items": items, "snap_t": int(layout.SNAP["t"]), "busy": layout.SNAP["busy"]})
+        elif self.path.startswith("/api/layout/snap.png"): self.send(layout.SNAP["png"] or b"", "image/png")
         elif self.path == "/debug":
             fs = sorted([f for f in os.listdir(D) if f.startswith("debug_")], key=lambda f: -os.path.getmtime(os.path.join(D, f)))
             rows = []
@@ -221,6 +236,26 @@ class H(BaseHTTPRequestHandler):
             if a in ("on", "off"):
                 S["vdisplay"] = a == "on"; VDS["retry"] = 0; save(); log("الشاشة الثانوية (تجريبي): " + ("تفعيل" if a == "on" else "إيقاف"))
             elif a == "test" and not VDS["busy"]: threading.Thread(target=_vd_job, args=(_vd_test,), daemon=True).start()
+        elif self.path == "/api/layout/snap":
+            def _snap():
+                try:
+                    layout.SNAP["busy"] = "انتقل إلى اللعبة الآن… يُلتقط المشهد بعد 8 ثوانٍ"; time.sleep(8)
+                    f = shizuku.frame(False); layout.SNAP["frame"] = f; layout.SNAP["png"] = shizuku.panel_shot(); layout.SNAP["t"] = time.time()
+                    layout.SNAP["busy"] = ""; log("المباني: التُقطت القلعة للمعايرة")
+                except Exception as e: layout.SNAP["busy"] = "تعذّر الالتقاط: %s" % e
+            threading.Thread(target=_snap, daemon=True).start()
+        elif self.path == "/api/layout/learn":
+            f = layout.SNAP["frame"]
+            if f is None or d.get("key") not in layout.MAP: return self.send({"error": "التقط القلعة أولاً"})
+            std = layout.learn(d["key"], f, d["x"], d["y"]); log("المباني: عُلِّم %s عند (%s,%s)" % (d["key"], d["x"], d["y"])); return self.send({"ok": 1, "std": std})
+        elif self.path == "/api/layout/clear": layout.clear(d.get("key", "")); log("المباني: حُذف تعليم %s" % d.get("key"))
+        elif self.path == "/api/layout/refresh":
+            def _ref():
+                try:
+                    layout.SNAP["busy"] = "انتقل إلى اللعبة… يُحدَّد موقع كل مبنى بعد 8 ثوانٍ"; time.sleep(8)
+                    layout.SNAP["busy"] = "يبحث عن المباني…"; layout.refresh(log, shizuku.frame(False)); layout.SNAP["busy"] = ""
+                except Exception as e: layout.SNAP["busy"] = "تعذّر: %s" % e
+            threading.Thread(target=_ref, daemon=True).start()
         elif self.path == "/api/clearlog": LOGS.clear(); log("حُذف السجل")
         elif self.path == "/api/tap": shizuku.tap(d["x"], d["y"], False); log("نقر %s,%s" % (d["x"], d["y"]))
         self.send({"ok": True})

@@ -150,12 +150,12 @@ class Frame:
             for y in range(box[1], box[3], step):
                 if fn(*self.px(x, y)): n += 1
         return n
-def frame():
+def frame(check=True):
     if VD["on"]: return Frame(_vd().grab("task", True))
     if APK:
-        if STOP.is_set(): raise Stopped("stopped")
+        if check and STOP.is_set(): raise Stopped("stopped")
         p = os.path.join(_TMP, "shot.raw"); _B.shToFile("screencap", p, 25000); return Frame(open(p, "rb").read())
-    sh("screencap %s.raw" % SHOT, timeout=25)
+    sh("screencap %s.raw" % SHOT, timeout=25, check=check)
     return Frame(open(SHOT + ".raw", "rb").read())
 def tapx(x, y, s=1.0): tap(x * s, y * s)
 

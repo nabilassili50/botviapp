@@ -10,8 +10,8 @@ android {
         applicationId = "com.botvi.panel"
         minSdk = 26
         targetSdk = 33
-        versionCode = 401
-        versionName = "4.1-apk"
+        versionCode = 402
+        versionName = "4.2-apk"
         ndk { abiFilters += listOf("armeabi-v7a", "arm64-v8a") }
     }
     compileOptions {

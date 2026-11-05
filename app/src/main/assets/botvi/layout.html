@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>معايرة المباني</title>
+<style>
+body{font-family:sans-serif;margin:0;background:#f3f4f9;color:#222}
+.bar{display:flex;gap:6px;flex-wrap:wrap;padding:8px;background:#fff;position:sticky;top:0;z-index:5;border-bottom:1px solid #ddd}
+button,select{font-size:15px;padding:9px 11px;border-radius:8px;border:1px solid #999}
+button{background:#4f46e5;color:#fff;border:0}
+#msg{padding:8px 12px;font-size:14px;background:#fffbe6;border-bottom:1px solid #eee}
+#wrap{position:relative;width:100%;line-height:0}
+img{width:100%;display:block;background:#222;min-height:120px}
+canvas{position:absolute;left:0;top:0;width:100%;height:100%}
+#list{padding:8px 12px;font-size:13px;line-height:1.7}
+</style></head><body>
+<div class="bar">
+ <button onclick="snap()">١) التقط القلعة (بعد 8 ث)</button>
+ <select id="sel"></select>
+ <button style="background:#16a34a" onclick="refreshNow()">٣) اختبار التحديد (بعد 8 ث)</button>
+ <button style="background:#dc2626" onclick="clr()">حذف المحدد</button>
+</div>
+<div id="msg">١) افتح اللعبة وهي داخل القلعة بعد التصغير، ثم اضغط «التقط القلعة» وانتقل فوراً إلى اللعبة. ٢) ارجع إلى هنا، اختر المبنى من القائمة واضغط عليه في الصورة.</div>
+<div id="wrap"><img id="im" alt=""><canvas id="cv" width="1280" height="800"></canvas></div>
+<div id="list"></div>
+<script>
+let items=[], snapT=0, busy="";
+const $=id=>document.getElementById(id);
+function post(u,d){return fetch(u,{method:"POST",body:JSON.stringify(d||{})}).then(r=>r.json())}
+async function load(){
+  const r=await fetch("/api/layout").then(r=>r.json()); items=r.items; busy=r.busy;
+  const cur=$("sel").value; $("sel").innerHTML=items.map(i=>`<option value="${i.key}">${i.learned?"✓ ":"○ "}${i.name}</option>`).join(""); if(cur) $("sel").value=cur;
+  if(r.snap_t!==snapT){snapT=r.snap_t; if(snapT) $("im").src="/api/layout/snap.png?t="+snapT;}
+  if(busy) $("msg").textContent=busy;
+  $("list").innerHTML=items.map(i=>`${i.learned?"✓":"○"} ${i.name}`+(i.loc?` — الموقع الحالي (${i.loc[0]},${i.loc[1]}) نتيجة ${i.loc[2]}`:"")).join("<br>");
+  draw();
+}
+function draw(){
+  const c=$("cv").getContext("2d"); c.clearRect(0,0,1280,800); c.font="bold 26px sans-serif"; c.lineWidth=4;
+  items.forEach(i=>{ if(!i.learned) return;
+    c.strokeStyle="#16a34a"; c.fillStyle="#16a34a"; c.beginPath(); c.arc(i.ref[0],i.ref[1],16,0,7); c.stroke(); c.fillText(i.name.split(" ")[0],i.ref[0]+20,i.ref[1]+8);
+    if(i.loc){c.strokeStyle="#2563eb"; c.beginPath(); c.arc(i.loc[0],i.loc[1],10,0,7); c.stroke();}
+  });
+}
+async function snap(){ $("msg").textContent="انتقل إلى اللعبة الآن… سيُلتقط المشهد بعد 8 ثوانٍ"; await post("/api/layout/snap"); poll(); }
+async function refreshNow(){ $("msg").textContent="انتقل إلى اللعبة… سيُحدَّد موقع كل مبنى بعد 8 ثوانٍ (الأزرق = الموقع المحدَّد حالياً)"; await post("/api/layout/refresh"); poll(); }
+async function clr(){ await post("/api/layout/clear",{key:$("sel").value}); load(); }
+function poll(){ let n=0; const t=setInterval(async()=>{ await load(); if((!busy&&n>2)||++n>40) clearInterval(t); },1500); }
+$("cv").addEventListener("click",async e=>{
+  if(!snapT){ $("msg").textContent="التقط القلعة أولاً"; return; }
+  const r=$("cv").getBoundingClientRect(), x=Math.round((e.clientX-r.left)/r.width*1280), y=Math.round((e.clientY-r.top)/r.height*800);
+  const key=$("sel").value, res=await post("/api/layout/learn",{key,x,y});
+  $("msg").textContent=res.error?("تعذّر: "+res.error):("حُفظ "+key+" عند ("+x+","+y+")"+(res.std<20?" — تنبيه: الصورة هناك باهتة التفاصيل، اضغط على جسم المبنى نفسه":""));
+  await load(); const s=$("sel"); for(let k=1;k<=items.length;k++){const j=(s.selectedIndex+k)%items.length; if(!items[j].learned){s.selectedIndex=j;break;}}
+});
+load();
+</script></body></html>
