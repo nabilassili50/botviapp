@@ -12,7 +12,7 @@ MAP = {                                           # المهمة -> (ثابت ا
     "train": ("BUILD_XY", "HEX_XY"), "beast": ("BUILD_XY", "HEX_XY"), "border": ("BUILD_XY", "HEX_XY"),
     "dice": ("BUILD_XY", "HEX_XY"), "lunar": ("BUILD_XY", "HEX_XY"), "tower": ("BUILD_XY", "HEX_XY"),
     "workshop": ("BUILD_XY", "HEX_XY"), "heal": ("HOSP_XY", "HEX_XY"), "arena": ("ARENA_XY", "HEX_XY"),
-    "lair": ("CAVE_XY", "HEX_XY"), "mana": ("MINE_XY", "HEX_XY"),
+    "lair": ("CAVE_XY", "HEX_XY"), "mana": ("MINE_XY", "HEX_XY"), "saga": ("STATUE_XY", "HEX_XY"),
 }
 ORIG = {}          # المهمة -> (مبنى، زر) الأصليان قبل أي تعديل
 LOC = {}           # المهمة -> (x, y, نتيجة) آخر موقع مُحدَّد
