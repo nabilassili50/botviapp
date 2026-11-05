@@ -16,7 +16,7 @@ if os.path.exists(SF): S.update(json.load(open(SF)))
 shizuku.CFG = S      # تجاوز شاشة اللمس يدوياً من settings.json (touch_path ...)
 ST = {"running": False, "shizuku": False, "last_beat": 0, "last_action": time.time()}
 LAST = {}
-VERSION = "v4.3.1-apk"      # يظهر في أعلى اللوحة وفي أول السجل: غيّره مع كل نسخة جديدة
+VERSION = "v4.3.2-apk"      # يظهر في أعلى اللوحة وفي أول السجل: غيّره مع كل نسخة جديدة
 LASTSHOT = {"png": None, "t": 0}
 LOGS = []; EV = []; EVID = [0]; CUR = [""]; BOOT = time.time()
 CNT = {"ok": 0, "warn": 0, "err": 0, "info": 0}; STAT = {"runs": {}, "errs": {}, "lasterr": {}, "marches": 0}
@@ -266,4 +266,10 @@ if __name__ == "__main__":
     shizuku.GAME[0] = S.get("game_pkg") or guard.PKG; shizuku.CHECK[0] = bool(S.get("game_only", True))
     threading.Thread(target=loop, daemon=True).start()
     log("اللوحة %s تعمل على المنفذ %d" % (VERSION, S["port"]))
-    ThreadingHTTPServer(("0.0.0.0", int(S["port"])), H).serve_forever()
+    try: srv = ThreadingHTTPServer(("0.0.0.0", int(S["port"])), H)
+    except OSError as e:
+        if getattr(e, "errno", 0) in (98, 48, 10048):      # المنفذ مشغول: نسخة أخرى من اللوحة (غالباً Termux) تعمل أصلاً
+            log("خطأ: المنفذ %d مشغول بنسخة أخرى من اللوحة (غالباً Termux). أوقفها بالأمر: pkill -f panel.py ثم أعد فتح التطبيق" % int(S["port"]))
+            raise RuntimeError("المنفذ %d مشغول: أوقف لوحة Termux (pkill -f panel.py) ثم أعد فتح التطبيق" % int(S["port"]))
+        raise
+    srv.serve_forever()
