@@ -15,7 +15,7 @@ if os.path.exists(SF): S.update(json.load(open(SF)))
 shizuku.CFG = S      # تجاوز شاشة اللمس يدوياً من settings.json (touch_path ...)
 ST = {"running": False, "shizuku": False, "last_beat": 0, "last_action": time.time()}
 LAST = {}
-VERSION = "v4.0-apk"      # يظهر في أعلى اللوحة وفي أول السجل: غيّره مع كل نسخة جديدة
+VERSION = "v4.1-apk"      # يظهر في أعلى اللوحة وفي أول السجل: غيّره مع كل نسخة جديدة
 LASTSHOT = {"png": None, "t": 0}
 LOGS = []; EV = []; EVID = [0]; CUR = [""]; BOOT = time.time()
 CNT = {"ok": 0, "warn": 0, "err": 0, "info": 0}; STAT = {"runs": {}, "errs": {}, "lasterr": {}, "marches": 0}
@@ -193,6 +193,18 @@ class H(BaseHTTPRequestHandler):
                 png = LASTSHOT["png"]
                 self.send(png or b"", "image/png", {"X-Shot-Live": int(live), "X-Shot-Age": int(time.time() - LASTSHOT["t"]) if png else -1})
             except Exception as e: self.send(b"", "image/png", {"X-Shot-Live": 0, "X-Shot-Age": -1})
+        elif self.path == "/debug":
+            fs = sorted([f for f in os.listdir(D) if f.startswith("debug_")], key=lambda f: -os.path.getmtime(os.path.join(D, f)))
+            rows = []
+            for f in fs:
+                t = time.strftime("%H:%M:%S", time.localtime(os.path.getmtime(os.path.join(D, f))))
+                if f.endswith(".png"): rows.append('<h4>%s — %s</h4><img src="/debug/%s" style="max-width:100%%;border:1px solid #888">' % (f, t, f))
+                else: rows.append('<h4>%s — %s</h4><pre>%s</pre>' % (f, t, open(os.path.join(D, f), encoding="utf-8", errors="replace").read()[:3000]))
+            self.send('<meta charset="utf-8"><meta name="viewport" content="width=device-width"><body style="font-family:sans-serif;padding:10px"><h3>ملفات التشخيص</h3>%s</body>' % ("".join(rows) or "لا ملفات بعد"), "text/html; charset=utf-8")
+        elif self.path.startswith("/debug/"):
+            f = os.path.basename(self.path[7:]); fp = os.path.join(D, f)
+            if f.startswith("debug_") and os.path.exists(fp): self.send(open(fp, "rb").read(), "image/png" if f.endswith(".png") else "text/plain; charset=utf-8")
+            else: self.send({"error": 404})
         else: self.send({"error": 404})
     def do_POST(self):
         n = int(self.headers.get("Content-Length", 0)); d = json.loads(self.rfile.read(n) or b"{}")

@@ -44,7 +44,16 @@ class MainActivity : Activity() {
                 override fun onPageFinished(v: WebView, url: String) { loaded = true }
             }
         }
+        val bar = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        fun tb(t: String, u: String) = TextView(this).apply {
+            text = t; textSize = 14f; gravity = Gravity.CENTER; setPadding(12, 12, 12, 12)
+            setTextColor(Color.WHITE); setBackgroundColor(Color.parseColor("#4f46e5"))
+            setOnClickListener { web.loadUrl("http://127.0.0.1:8080$u") }
+        }
+        bar.addView(tb("اللوحة", "/"), LinearLayout.LayoutParams(0, -2, 1f))
+        bar.addView(tb("ملفات التشخيص", "/debug"), LinearLayout.LayoutParams(0, -2, 1f))
         root.addView(status)
+        root.addView(bar)
         root.addView(web, LinearLayout.LayoutParams(-1, 0, 1f))
         setContentView(root)
         startForegroundService(Intent(this, BotService::class.java))

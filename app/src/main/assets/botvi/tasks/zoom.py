@@ -112,7 +112,9 @@ def zoom_out(log, cfg, tries=6, probe=False):
         break
     guard.NEED_ZOOM[0] = False; LAST[0] = time.time()
     if moved:
-        log("الزوم: صُغّرت القلعة (%d قرصة، الطريقة %s)" % (moved, MODE[0]))
+        log("الزوم: صُغّرت القلعة (%d قرصة، الطريقة %s) فروق=%s" % (moved, MODE[0], " ".join(t.split(":")[-1] for t in trace)))
+        try: open(os.path.join(BASE, "debug_afterzoom.png"), "wb").write(screencap())      # شكل المدينة بعد التصغير مباشرة
+        except Exception: pass
     elif probe: return                                     # فحص دوري: كانت مصغّرة أصلاً، لا ضجيج
     else:
         _debug(trace)
