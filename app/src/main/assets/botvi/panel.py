@@ -16,7 +16,7 @@ if os.path.exists(SF): S.update(json.load(open(SF)))
 shizuku.CFG = S      # تجاوز شاشة اللمس يدوياً من settings.json (touch_path ...)
 ST = {"running": False, "shizuku": False, "last_beat": 0, "last_action": time.time()}
 LAST = {}
-VERSION = "v4.2.1-apk"      # يظهر في أعلى اللوحة وفي أول السجل: غيّره مع كل نسخة جديدة
+VERSION = "v4.3.0-apk"      # يظهر في أعلى اللوحة وفي أول السجل: غيّره مع كل نسخة جديدة
 LASTSHOT = {"png": None, "t": 0}
 LOGS = []; EV = []; EVID = [0]; CUR = [""]; BOOT = time.time()
 CNT = {"ok": 0, "warn": 0, "err": 0, "info": 0}; STAT = {"runs": {}, "errs": {}, "lasterr": {}, "marches": 0}
@@ -33,7 +33,7 @@ def log(m):
     if "أُرسلت مسيرة (" in m: STAT["marches"] += 1
 def save(): json.dump(S, open(SF, "w"), ensure_ascii=False, indent=1)
 
-TASKS = [("help", "مساعدات التحالف (أولوية)", "help_int"), ("mystery", "صندوق الغموض", "mystery_int"), ("ship", "سفينة الشحن (تبادل)", "ship_int"), ("gifts", "هدايا التحالف", "gifts_int"), ("saga", "الملحمة البطولية", "saga_int"), ("mana", "تكرير المانا", "mana_int"), ("lair", "مغارة الظلام", "lair_int"), ("heal", "علاج الجنود", "heal_int"), ("arena", "ميدان الأبطال", "arena_int"), ("dice", "لوحة النرد", "dice_int"), ("border", "صناديق بوابة الحدود", "border_int"), ("train", "تدريب القوات", "train_int"), ("tower", "برج الوحوش (دمج)", "tower_int"), ("workshop", "هدية إمدادات التشكيل", "workshop_int"), ("beast", "حلبة تدريب الوحوش", "beast_int"), ("lunar", "المصنع القمري (تصنيع الأسلحة)", "lunar_int"), ("skills", "مهارات الوحوش المساعدة", "skills_int"), ("gather", "جمع الموارد (آخر المهام)", "gather_int")]
+TASKS = [("help", "مساعدات التحالف (أولوية)", "help_int"), ("mystery", "صندوق الغموض", "mystery_int"), ("gifts", "هدايا التحالف", "gifts_int"), ("saga", "الملحمة البطولية", "saga_int"), ("mana", "تكرير المانا", "mana_int"), ("lair", "مغارة الظلام", "lair_int"), ("heal", "علاج الجنود", "heal_int"), ("arena", "ميدان الأبطال", "arena_int"), ("dice", "لوحة النرد", "dice_int"), ("border", "صناديق بوابة الحدود", "border_int"), ("train", "تدريب القوات", "train_int"), ("tower", "برج الوحوش (دمج)", "tower_int"), ("workshop", "هدية إمدادات التشكيل", "workshop_int"), ("beast", "حلبة تدريب الوحوش", "beast_int"), ("lunar", "المصنع القمري (تصنيع الأسلحة)", "lunar_int"), ("skills", "مهارات الوحوش المساعدة", "skills_int"), ("ship", "سفينة الشحن (آخر مهمة في القلعة)", "ship_int"), ("gather", "جمع الموارد (الخريطة، آخر المهام)", "gather_int")]
 RES = {}
 RL = threading.Lock()
 NAMES = dict((k, n) for k, n, _ in TASKS); NAMES.update({"guard": "الحارس", "zoom": "تصغير القلعة", "": "النظام"})
@@ -64,6 +64,8 @@ def _run_task(key, manual):
                 elif entering: guard.NEED_ZOOM[0] = False
                 if layout.DATA and (entering or not layout.T[0]):    # 3) حدّد مواقع المباني من جديد عند كل دخول
                     layout.refresh(log)
+                elif entering and not layout.DATA:
+                    log("المباني: لم تُعلَّم أي مبانٍ بعد؛ المهام تستعمل الإحداثيات الثابتة (علّمها مرة واحدة من صفحة /layout)")
             except shizuku.Stopped as e: log("أُوقفت المهمة: %s (%s)" % (key, e)); return
             except Exception as e: log("خطأ في الزوم: %s" % e)
         try: layout.apply(key, mod)
