@@ -10,9 +10,20 @@ android {
         applicationId = "com.botvi.panel"
         minSdk = 26
         targetSdk = 33
-        versionCode = 402
-        versionName = "4.2-apk"
+        versionCode = 403
+        versionName = "4.2.1-apk"
         ndk { abiFilters += listOf("armeabi-v7a", "arm64-v8a") }
+    }
+    signingConfigs {
+        create("fixed") {
+            storeFile = file("botvi.keystore")
+            storePassword = "botvi123"
+            keyAlias = "botvi"
+            keyPassword = "botvi123"
+        }
+    }
+    buildTypes {
+        getByName("debug") { signingConfig = signingConfigs.getByName("fixed") }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
