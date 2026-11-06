@@ -1,34 +1,39 @@
-"""هدايا التحالف: التحالف ← \"مستوى الهدية\" ← تبويبي \"هدية التحالف\" و\"صندوق المكافآت\": يضغط زر \"فتح الكل\" (الصندوق بسهم أخضر) ثم يفتح ما تبقى صفاً صفاً مع التمرير.
-لا يضغط \"مسح\"/سلة المحذوفات إلا إن فعّلت gifts_clear (يمسح الهدايا المفتوحة فقط). لا يستهلك أي مورد."""
-import os, time
-from shizuku import frame, tapx, screencap, swipe, nap
-from tasks.saga import has_x, CLOSE_X
-from tasks.guard import popup_x, city
+"""هدايا التحالف — v4.3.6.
+المسار (من لقطاتك): المدينة ← زر التحالف في الشريط السفلي ← زر "مستوى الهدية" ← شاشة هدايا التحالف:
+  تبويب "هدية التحالف": زر الصندوق ذي السهم (فتح الكل) ثم زر السلة (حذف المفتوح)،
+  ثم تبويب "صندوق المكافآت": الشيء نفسه (فارغ = لا يفعل شيئاً).
+  - لا يضغط السلة إلا إذا ظهر زر "مسح" الأحمر في أول صف (أي فُتحت الهدايا).
+  - gifts_delete=false في settings.json يعطّل الحذف (الافتراضي: يحذف).
+  - إن ظهرت نافذة بعد السلة يحفظ debug_gifts_trash.png ويضغط الزر الذهبي فيها؛ أرسل لي اللقطة إن ظهرت."""
+import os
+from shizuku import frame, tapx, nap, screencap
+from tasks.saga import has_x, CLOSE_X, _blobs
+from tasks.guard import city
 
-RED = lambda r, g, b: r > 150 and g < 80 and b < 80
-BROWN = lambda r, g, b: 120 < r < 190 and 70 < g < 120 and 30 < b < 80 and r > g + 40
-TITLE = lambda r, g, b: r < 50 and 120 < g < 160 and 160 < b < 200
-TABC = lambda r, g, b: r < 80 and 150 < g < 200 and b > 200
-WHITE = lambda r, g, b: r > 170 and g > 185 and b > 185
+RED = lambda r, g, b: r > 150 and g < 110 and b < 110 and r > g + 60           # زر "مسح" والسلة
+OPEN = lambda r, g, b: r <= 58 and 112 <= g <= 130 and 125 <= b <= 160         # زر "فتح" وزر الصندوق (ليس خلفية الشاشة الفارغة)
+BRIGHT = lambda r, g, b: r < 130 and g > 140 and b > 190                       # التبويب النشط
+BROWN = lambda r, g, b: 120 < r < 200 and 65 < g < 130 and 25 < b < 85 and r > g + 30
+GOLD = lambda r, g, b: 150 < r < 255 and 90 < g < 190 and b < 90 and r > g + 40
 
-ALLIANCE_XY, GIFT_XY = (672, 745), (345, 320)       # زر التحالف في الشريط السفلي، وزر \"مستوى الهدية\" داخل شاشة التحالف
-OPEN_ALL_XY, TRASH_XY = (213, 172), (340, 172)
-TABS = [("هدية التحالف", (630, 268), (480, 245, 780, 292)), ("صندوق المكافآت", (307, 268), (155, 245, 460, 292))]
-ROWS = [338 + 124 * i for i in range(4)]            # مراكز صفوف القائمة عند أعلى القائمة
+ALLIANCE_BTN, GIFT_LEVEL_BTN = (680, 752), (343, 305)
+OPEN_ALL, TRASH = (213, 172), (340, 172)
+TAB_GIFT, TAB_REWARD = (630, 270), (308, 270)
+ROWS = [(150, 310, 295, 367), (150, 433, 295, 490), (150, 557, 295, 614), (150, 681, 295, 738)]
 
-def gifts(f): return has_x(f) and f.count((290, 145, 395, 205), RED) > 300 and f.count((500, 80, 780, 125), TITLE) > 1000
-def alliance(f): return has_x(f) and f.count((290, 145, 395, 205), RED) < 60 and f.count((245, 275, 450, 315), BROWN) > 150 and f.count((500, 80, 780, 125), TITLE) > 1000
-def row_state(f, y):
-    """open = زر \"فتح\" (نص أبيض على أزرق)، done = زر \"مسح\" الأحمر، none = لا صف."""
-    box = (150, y - 27, 295, y + 27)
-    if f.count(box, RED) > 300: return "done"
-    return "open" if f.count((190, y - 15, 255, y + 15), WHITE, 1) > 25 else "none"
-def sig(f): return [f.px(x, y) for x in range(330, 760, 70) for y in range(310, 770, 40)]
-def same(a, b): return sum(1 for p, q in zip(a, b) if sum(abs(i - j) for i, j in zip(p, q)) > 90) < len(a) * 0.15
+
+def gifts_screen(f): return has_x(f) and f.count((158, 140, 270, 205), OPEN) > 800 and f.count((285, 140, 395, 205), RED) > 1200
+def alliance_screen(f): return has_x(f) and f.count((245, 275, 445, 342), BROWN) > 1200 and f.count((158, 140, 270, 205), OPEN) < 400
+def tab_gift(f): return f.count((480, 248, 780, 290), BRIGHT) > 3000
+def tab_reward(f): return f.count((160, 248, 455, 290), BRIGHT) > 3000
+def n_open(f): return sum(1 for b in ROWS if f.count(b, OPEN) > 1500)
+def any_red(f): return f.count(ROWS[0], RED) > 1500
+
 
 def snap(name):
     try: open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "debug_%s.png" % name), "wb").write(screencap())
     except Exception: pass
+
 
 def close_all(n=4):
     for _ in range(n):
@@ -36,47 +41,58 @@ def close_all(n=4):
         if not has_x(f): return
         tapx(*CLOSE_X, f.s); nap(1.2)
 
-def settle(s):
-    """أغلق نافذة المكافأة/التأكيد الطارئة وارجع لشاشة الهدايا. يعيد True إن عدنا إليها."""
+
+def open_gifts(f):
+    s = f.s
+    for _ in range(5):
+        if gifts_screen(f): return f
+        if alliance_screen(f): tapx(*GIFT_LEVEL_BTN, s); nap(1.8); f = frame(); continue
+        if has_x(f): tapx(*CLOSE_X, s); nap(1.2); f = frame(); continue          # شاشة أخرى: أغلقها
+        if not city(f): return None
+        tapx(*ALLIANCE_BTN, s); nap(1.8); f = frame()
+    return f if gifts_screen(f) else None
+
+
+def confirm_popup(log, s):
+    """نافذة ظهرت بعد السلة (لم أرها): احفظ لقطتها واضغط الزر الذهبي الأيسر فيها."""
+    snap("gifts_trash")
+    f = frame(); C = 6; cells = {}
+    for y in range(300, 790, 2):
+        for x in range(200, 1100, 2):
+            if GOLD(*f.px(x, y)): k = (x // C, y // C); cells[k] = cells.get(k, 0) + 1
+    bl = sorted(_blobs(cells, C, (100, 320), (40, 100), 800))
+    if bl:
+        b = bl[0]; tapx((b[0] + b[2]) // 2, (b[1] + b[3]) // 2, s); log("الهدايا: ظهرت نافذة بعد الحذف؛ ضُغط الزر الذهبي (حُفظت debug_gifts_trash.png)"); nap(1.5)
+    else: log("الهدايا: ظهرت نافذة غير معروفة بعد الحذف (حُفظت debug_gifts_trash.png)")
+
+
+def work(log, cfg, s, name):
+    opened = deleted = 0
     for _ in range(3):
         f = frame()
-        if gifts(f): return True
-        p = popup_x(f)
-        if p: tapx(p[0], p[1], s)
-        else: tapx(640, 760, s)
-        nap(1.5)
-    return gifts(frame())
+        if not gifts_screen(f): break
+        k = n_open(f)
+        if not k: break
+        tapx(*OPEN_ALL, s); nap(2.5); opened += k
+    f = frame()
+    if cfg.get("gifts_delete", True) and gifts_screen(f) and any_red(f):
+        tapx(*TRASH, s); nap(1.6); f = frame()
+        if not gifts_screen(f): confirm_popup(log, s); f = frame()
+        if gifts_screen(f) and not any_red(f): deleted = 1
+        else: log("الهدايا: لم تُحذف القائمة بعد السلة")
+    log("الهدايا: %s — فُتح %s%s" % (name, "%d+ هدية" % opened if opened else "لا شيء", "، وحُذفت المفتوحة" if deleted else ""))
 
-def do_tab(log, s, name, xy, box, clear):
-    tapx(*xy, s); nap(1.5)
-    if not settle(s): return log("الهدايا: خرجنا من الشاشة")
-    f = frame(); n = 0
-    if f.count(box, TABC) < 300: return log("الهدايا: تعذّر فتح تبويب " + name)
-    if any(row_state(f, y) == "open" for y in ROWS):
-        tapx(*OPEN_ALL_XY, s); nap(2); n += 1
-        if not settle(s): return log("الهدايا: خرجنا من الشاشة بعد فتح الكل")
-    still = 0
-    for _ in range(30):
-        f = frame(); todo = [y for y in ROWS if row_state(f, y) == "open"]
-        if todo:
-            tapx(250, todo[0], s); nap(1.6); n += 1; still += 1
-            if not settle(s): return log("الهدايا: خرجنا من الشاشة")
-            if still > 60: break
-            continue
-        a = sig(f); swipe(int(450 * s), int(700 * s), int(450 * s), int(330 * s), 500); nap(1.3)
-        if same(a, sig(frame())): break
-    log("الهدايا: %s — %d عملية فتح" % (name, n))
-    if clear and n: tapx(*TRASH_XY, s); nap(1.5); settle(s)
 
 def run(log, cfg):
     f = frame()
     if f.w < f.h: return log("الشاشة عمودية؛ يلزم الوضع الأفقي")
+    f = open_gifts(f)
+    if f is None: return log("الهدايا: لم تُفتح شاشة هدايا التحالف (حُفظت debug_gifts_open.png)") or snap("gifts_open")
     s = f.s
-    if not gifts(f):
-        if not (alliance(f) or city(f)): close_all()
-        f = frame()
-        if city(f): tapx(*ALLIANCE_XY, s); nap(2); f = frame()
-        if alliance(f): tapx(*GIFT_XY, s); nap(2); f = frame()
-        if not gifts(f): snap("gifts_open"); close_all(); return log("الهدايا: لم تُفتح شاشة هدايا التحالف (حُفظت debug_gifts_open.png)")
-    for name, xy, box in TABS: do_tab(log, s, name, xy, box, cfg.get("gifts_clear", False))
+    if not tab_gift(f): tapx(*TAB_GIFT, s); nap(1.5)
+    work(log, cfg, s, "هدية التحالف")
+    f = frame()
+    if gifts_screen(f):
+        tapx(*TAB_REWARD, s); nap(1.5)
+        work(log, cfg, s, "صندوق المكافآت")
     close_all()
