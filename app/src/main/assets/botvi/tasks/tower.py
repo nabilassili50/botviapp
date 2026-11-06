@@ -2,6 +2,7 @@
 لا يضغط \"إنهاء الدمج فورا\" ولا \"زيادة سرعة\" ولا \"إلغاء\"."""
 import os, time
 from shizuku import frame, tapx, screencap, nap
+from tasks.nav import open_building
 from tasks.saga import has_x, CLOSE_X
 
 RIBBON = lambda r, g, b: r > 170 and 40 < g < 90 and 30 < b < 80
@@ -38,7 +39,7 @@ def run(log, cfg):
             if not has_x(f): break
             tapx(*CLOSE_X, f.s); nap(1.2)
         b = cfg.get("tower_build") or BUILD_XY; h = cfg.get("tower_hex") or HEX_XY
-        tapx(*b, f.s); nap(1.2); tapx(*h, f.s); nap(3); f = frame()
+        f = open_building(log, "البرج", b, h, lambda x: choose(x) or fuse_idle(x) or fusing(x))
         if not (choose(f) or fuse_idle(f) or fusing(f)): snap("tower_open"); return log("البرج: لم تُفتح الشاشة (حُفظت debug_tower_open.png)")
     s = f.s
     if choose(f): tapx(*SCROLL_XY, s); nap(2); f = frame()

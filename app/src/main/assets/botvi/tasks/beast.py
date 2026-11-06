@@ -2,6 +2,7 @@
 لا يضغط \"إلغاء\" (زر X) ولا أي شراء. اضبط beast_confirm=false في settings.json إن أردت أن يتوقف عند شاشة \"استعراض التدريب\" دون تأكيد."""
 import os, time
 from shizuku import frame, tapx, screencap, nap
+from tasks.nav import open_building
 from tasks.saga import has_x, CLOSE_X
 from tasks.tower import note, swap, GO_CHANGE_XY, APPLY_XY
 from tasks.guard import popup_x
@@ -32,7 +33,7 @@ def run(log, cfg):
             if not has_x(f): break
             tapx(*CLOSE_X, f.s); nap(1.2)
         b = cfg.get("beast_build") or BUILD_XY; h = cfg.get("beast_hex") or HEX_XY
-        tapx(*b, f.s); nap(1.2); tapx(*h, f.s); nap(3); f = frame()
+        f = open_building(log, "الوحوش", b, h, lambda x: arena(x) or review(x))
         if not (arena(f) or review(f)): snap("beast_open"); return log("الوحوش: لم تُفتح الحلبة (حُفظت debug_beast_open.png)")
     s = f.s; started = False; got = False
     for _ in range(10):

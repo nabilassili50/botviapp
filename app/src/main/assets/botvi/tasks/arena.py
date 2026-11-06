@@ -1,6 +1,7 @@
 """ميدان الأبطال: جمع مكافآت الترتيب ثم تحدّي الخصم الأول حتى تنتهي محاولات اليوم. لا يشتري محاولات أبداً."""
 import os, time
 from shizuku import frame, tapx, screencap, nap
+from tasks.nav import open_building
 from tasks.saga import has_x, CLOSE_X
 
 TEAL = lambda r, g, b: r < 70 and 90 < g < 150 and 120 < b < 190
@@ -40,7 +41,7 @@ def run(log, cfg):
             f = frame()
             if not has_x(f): break
             tapx(*CLOSE_X, f.s); nap(1.2)
-        tapx(*ARENA_XY, f.s); nap(1.2); tapx(*HEX_XY, f.s); nap(2); f = frame()
+        f = open_building(log, "الميدان", ARENA_XY, HEX_XY, arena)
         if not arena(f): snap("arena_open"); return log("الميدان: لم تُفتح الشاشة (حُفظت debug_arena_open.png)")
     s = f.s
     if alert(f):                                  # مكافآت الترتيب

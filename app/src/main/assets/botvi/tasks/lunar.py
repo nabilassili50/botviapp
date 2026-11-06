@@ -2,6 +2,7 @@
 لا يضغط \"تصنيع الآن\" ولا أي زر يستهلك الجواهر أبداً. وإن فعّلت lunar_skip_short يتجاوز الجولة عند نقص الموارد (أرقام حمراء)."""
 import os, time
 from shizuku import frame, tapx, screencap, nap
+from tasks.nav import open_building
 from tasks.saga import has_x, CLOSE_X
 
 RIBBON = lambda r, g, b: r > 150 and g < 90 and b < 90
@@ -38,7 +39,7 @@ def run(log, cfg):
     if not craft_screen(f):
         close_all()
         b = cfg.get("lunar_build") or BUILD_XY; h = cfg.get("lunar_hex") or HEX_XY
-        tapx(*b, s); nap(1.2); tapx(*h, s); nap(2.5); f = frame()
+        f = open_building(log, "المصنع القمري", b, h, craft_screen)
     if info_screen(f): snap("lunar_info"); close_all(); return log("المصنع القمري: فُتحت شاشة المعلومات بدل التصنيع (حُفظت debug_lunar_info.png)")
     if not craft_screen(f): snap("lunar_open"); close_all(); return log("المصنع القمري: لم تُفتح شاشة التصنيع أو أن التصنيع جارٍ (حُفظت debug_lunar_open.png)")
     if cfg.get("lunar_skip_short", False) and short(f): close_all(); return log("المصنع القمري: الموارد غير كافية؛ تخطّي دون استخدام جواهر")

@@ -1,6 +1,7 @@
 """علاج الجنود في المستشفى: اختيار الكل ← معالجة ← (اختياري) استخدام التسريع التلقائي. لا يستخدم الجواهر أبداً."""
 import time
 from shizuku import frame, tapx, nap
+from tasks.nav import open_building
 from tasks.saga import has_x, CLOSE_X
 
 GOLD = lambda r, g, b: 150 < r < 255 and 90 < g < 190 and b < 90 and r > g + 40
@@ -29,7 +30,7 @@ def run(log, cfg):
             f = frame()
             if not has_x(f): break
             tapx(*CLOSE_X, s); nap(1.2)
-        tapx(*HOSP_XY, s); nap(1.2); tapx(*HEX_XY, s); nap(2); f = frame()
+        f = open_building(log, "العلاج", HOSP_XY, HEX_XY, hospital)
         if not hospital(f): return log("العلاج: لم تُفتح شاشة المستشفى")
     if not wounded(f): log("العلاج: لا جنود مصابون"); tapx(*CLOSE_X, s); return
     if not selected(f):

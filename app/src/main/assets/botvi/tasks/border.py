@@ -1,6 +1,7 @@
 """بوابة الحدود: فتح صناديق الحدود المجانية فقط (النبيل والشجاع). لا يستعمل المفاتيح ولا الجواهر ولا يضغط الصفقة اليومية."""
 import os, time
 from shizuku import frame, tapx, screencap, nap
+from tasks.nav import open_building
 from tasks.saga import has_x, CLOSE_X
 
 OPEN = lambda r, g, b: r < 75 and 100 < g < 140 and 115 < b < 165      # زر "فتح" الأزرق المخضر
@@ -38,7 +39,7 @@ def run(log, cfg):
                 if not has_x(f): break
                 tapx(*CLOSE_X, f.s); nap(1.2)
             b = cfg.get("border_build") or BUILD_XY; h = cfg.get("border_hex") or HEX_XY
-            tapx(*b, f.s); nap(1.2); tapx(*h, f.s); nap(3); f = frame()
+            f = open_building(log, "الحدود", b, h, lambda x: gate(x) or chests(x))
             if not gate(f) and not chests(f): snap("border_open"); return log("الحدود: لم تُفتح البوابة (حُفظت debug_border_open.png)")
         if not chests(f):
             tapx(*CHEST_BTN, f.s); nap(2); f = frame()

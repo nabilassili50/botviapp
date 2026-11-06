@@ -1,6 +1,7 @@
 """تدريب القوات في الثكنة: يختار النوع والدرجة من اللوحة ثم يضغط \"درب\" بالكمية القصوى. لا يضغط إنهاء الآن ولا زيادة السرعة ولا الإلغاء."""
 import os, time
 from shizuku import frame, tapx, screencap, nap
+from tasks.nav import open_building
 from tasks.saga import has_x, CLOSE_X
 
 RIBBON = lambda r, g, b: r > 170 and 40 < g < 90 and 30 < b < 80
@@ -39,7 +40,7 @@ def run(log, cfg):
             if not has_x(f): break
             tapx(*CLOSE_X, f.s); nap(1.2)
         b = cfg.get("train_build") or BUILD_XY; h = cfg.get("train_hex") or HEX_XY
-        tapx(*b, f.s); nap(1.2); tapx(*h, f.s); nap(3); f = frame()
+        f = open_building(log, "التدريب", b, h, barracks)
         if not barracks(f): snap("train_open"); return log("التدريب: لم تُفتح الثكنة (حُفظت debug_train_open.png)")
     s = f.s
     for _ in range(3): drag(s, False); nap(0.6)               # إلى أعلى القائمة

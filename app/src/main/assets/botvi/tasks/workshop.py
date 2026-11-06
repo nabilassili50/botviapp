@@ -1,6 +1,7 @@
 """ورشة العمل ← إمدادات التشكيل: استلام \"هدية التشكيل\" المجانية فقط. لا يضغط أي زر \"شراء\" أبداً."""
 import os, time
 from shizuku import frame, tapx, screencap, nap
+from tasks.nav import open_building
 from tasks.saga import has_x, CLOSE_X
 
 RIBBON = lambda r, g, b: r > 170 and 40 < g < 90 and 30 < b < 80
@@ -31,7 +32,7 @@ def run(log, cfg):
             if not has_x(f): break
             tapx(*CLOSE_X, f.s); nap(1.2)
         b = cfg.get("workshop_build") or BUILD_XY; h = cfg.get("workshop_hex") or HEX_XY
-        tapx(*b, f.s); nap(1.2); tapx(*h, f.s); nap(3); f = frame()
+        f = open_building(log, "الورشة", b, h, lambda x: workshop(x) or supply(x))
     if workshop(f): tapx(*CARD_XY, f.s); nap(2.2); f = frame()
     if not supply(f): snap("workshop_open"); return log("الورشة: لم تُفتح إمدادات التشكيل (حُفظت debug_workshop_open.png)")
     s = f.s; n = 0

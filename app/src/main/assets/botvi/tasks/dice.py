@@ -1,6 +1,7 @@
 """لوحة النرد (القبة الزجاجية): رمي مجاني فقط، ثم \"بدء\" لكل معركة تظهر. لا يرمي بالعملة أبداً."""
 import os, time
 from shizuku import frame, tapx, screencap, nap
+from tasks.nav import open_building
 from tasks.saga import has_x, CLOSE_X
 
 GOLD = lambda r, g, b: 150 < r < 255 and 90 < g < 190 and b < 90 and r > g + 40
@@ -41,7 +42,7 @@ def run(log, cfg):
             f = frame()
             if not has_x(f): break
             tapx(*CLOSE_X, f.s); nap(1.2)
-        tapx(*BUILD_XY, f.s); nap(1.2); tapx(*HEX_XY, f.s); nap(3); f = frame()
+        f = open_building(log, "النرد", BUILD_XY, HEX_XY, board)
         if not board(f): snap("dice_open"); return log("النرد: لم تُفتح اللوحة (حُفظت debug_dice_open.png)")
     s = f.s; rolls = 0; fights = 0
     for _ in range(25):
