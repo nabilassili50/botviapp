@@ -16,7 +16,7 @@ if os.path.exists(SF): S.update(json.load(open(SF)))
 shizuku.CFG = S      # تجاوز شاشة اللمس يدوياً من settings.json (touch_path ...)
 ST = {"running": False, "shizuku": False, "last_beat": 0, "last_action": time.time()}
 LAST = {}
-VERSION = "v4.3.3-apk"      # يظهر في أعلى اللوحة وفي أول السجل: غيّره مع كل نسخة جديدة
+VERSION = "v4.3.5-apk"      # يظهر في أعلى اللوحة وفي أول السجل: غيّره مع كل نسخة جديدة
 LASTSHOT = {"png": None, "t": 0}
 LOGS = []; EV = []; EVID = [0]; CUR = [""]; BOOT = time.time()
 CNT = {"ok": 0, "warn": 0, "err": 0, "info": 0}; STAT = {"runs": {}, "errs": {}, "lasterr": {}, "marches": 0}
@@ -296,7 +296,10 @@ class H(BaseHTTPRequestHandler):
                     layout.SNAP["busy"] = "يبحث عن المباني…"; layout.refresh(log, shizuku.frame(False)); layout.SNAP["busy"] = ""
                 except Exception as e: layout.SNAP["busy"] = "تعذّر: %s" % e
             threading.Thread(target=_ref, daemon=True).start()
-        elif self.path == "/api/clearlog": LOGS.clear(); log("حُذف السجل")
+        elif self.path == "/api/clearlog":
+            LOGS.clear(); EV.clear()
+            for k in CNT: CNT[k] = 0
+            log("حُذف السجل")
         elif self.path == "/api/cleardebug": log("حُذفت %d ملفات تشخيص" % clear_debug())
         elif self.path == "/api/tap": shizuku.tap(d["x"], d["y"], False); log("نقر %s,%s" % (d["x"], d["y"]))
         self.send({"ok": True})
