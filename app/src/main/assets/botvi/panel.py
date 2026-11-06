@@ -1,4 +1,4 @@
-import json, os, time, threading, shutil
+import json, os, time, threading, shutil, html
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 import shizuku
 import tasks.guard as guard
@@ -16,7 +16,7 @@ if os.path.exists(SF): S.update(json.load(open(SF)))
 shizuku.CFG = S      # تجاوز شاشة اللمس يدوياً من settings.json (touch_path ...)
 ST = {"running": False, "shizuku": False, "last_beat": 0, "last_action": time.time()}
 LAST = {}
-VERSION = "v4.3.2-apk"      # يظهر في أعلى اللوحة وفي أول السجل: غيّره مع كل نسخة جديدة
+VERSION = "v4.3.3-apk"      # يظهر في أعلى اللوحة وفي أول السجل: غيّره مع كل نسخة جديدة
 LASTSHOT = {"png": None, "t": 0}
 LOGS = []; EV = []; EVID = [0]; CUR = [""]; BOOT = time.time()
 CNT = {"ok": 0, "warn": 0, "err": 0, "info": 0}; STAT = {"runs": {}, "errs": {}, "lasterr": {}, "marches": 0}
@@ -37,6 +37,7 @@ TASKS = [("help", "مساعدات التحالف (أولوية)", "help_int"), (
 RES = {}
 RL = threading.Lock()
 NAMES = dict((k, n) for k, n, _ in TASKS); NAMES.update({"guard": "الحارس", "zoom": "تصغير القلعة", "": "النظام"})
+layout.NAMES = NAMES
 
 PEND = set()
 def run_task(key, manual=False):
@@ -62,7 +63,7 @@ def _run_task(key, manual):
                     zoom.zoom_out(log, S, probe=not guard.NEED_ZOOM[0])
                     guard.clear(log, S)                               # إعلان ظهر أثناء التصغير؟ أغلقه قبل المهمة
                 elif entering: guard.NEED_ZOOM[0] = False
-                if layout.DATA and (entering or not layout.T[0]):    # 3) حدّد مواقع المباني من جديد عند كل دخول
+                if layout.DATA and (entering or not layout.T[0] or time.time() - layout.T[0] > int(S.get("layout_ttl", 90))):    # 3) حدّد مواقع المباني عند كل دخول وكل 90 ث
                     layout.refresh(log)
                 elif entering and not layout.DATA:
                     log("المباني: لم تُعلَّم أي مبانٍ بعد؛ المهام تستعمل الإحداثيات الثابتة (علّمها مرة واحدة من صفحة /layout)")
@@ -81,6 +82,34 @@ def _run_task(key, manual):
         except Exception as e: log("خطأ في الحارس: %s" % e)
         RES[key] = time.time(); ST["last_action"] = time.time(); PEND.discard(key)
         if key == "mana" and r == "limit": LAST["mana"] = time.time() + 10 * 3600
+
+def debug_files():
+    return sorted([f for f in os.listdir(D) if f.startswith("debug_")], key=lambda f: -os.path.getmtime(os.path.join(D, f)))
+def clear_debug(older=0):
+    n = 0
+    for f in debug_files():
+        fp = os.path.join(D, f)
+        try:
+            if time.time() - os.path.getmtime(fp) >= older: os.remove(fp); n += 1
+        except Exception: pass
+    return n
+def report():
+    """تقرير نصي واحد للنسخ واللصق: النسخة والحالة وأخطاء المهام وآخر الأحداث ومحتوى ملفات التشخيص النصية."""
+    now = time.time(); L = []
+    L.append("Botvi %s | تشغيل منذ %d د | يعمل=%s shizuku=%s اللعبة=%s" % (VERSION, (now - BOOT) / 60, ST.get("running"), ST.get("shizuku"), ST.get("front")))
+    L.append("المهام المفعّلة: " + ", ".join(k for k, _, _ in TASKS if S.get(k)))
+    L.append("عدّادات: " + json.dumps(CNT) + " | تشغيلات: " + json.dumps(STAT["runs"], ensure_ascii=False) + " | أخطاء: " + json.dumps(STAT["errs"], ensure_ascii=False))
+    L.append("طبقة المباني: %d معلَّم، %d محدَّد" % (len(layout.DATA), len(layout.LOC)))
+    L.append("\n=== آخر الأحداث ===")
+    for e in EV[-150:]: L.append("%s [%s] %s: %s" % (e["t"], e["lv"], e["k"] or "-", e["m"]))
+    fs = debug_files()
+    L.append("\n=== ملفات التشخيص (%d) ===" % len(fs))
+    for f in fs: L.append("%s  %s" % (time.strftime("%H:%M:%S", time.localtime(os.path.getmtime(os.path.join(D, f)))), f))
+    for f in fs:
+        if f.endswith(".txt"):
+            try: L.append("\n--- %s ---\n%s" % (f, open(os.path.join(D, f), encoding="utf-8", errors="replace").read()[:1500]))
+            except Exception: pass
+    return "\n".join(L)
 
 VDS = {"busy": False, "err": "", "retry": 0, "chk": 0, "report": None}
 def _vd_job(fn):
@@ -210,14 +239,23 @@ class H(BaseHTTPRequestHandler):
                 items.append({"key": k, "name": NAMES.get(k, k), "learned": bool(d), "ref": d["ref"] if d else None, "loc": list(layout.LOC[k]) if k in layout.LOC else None})
             self.send({"items": items, "snap_t": int(layout.SNAP["t"]), "busy": layout.SNAP["busy"]})
         elif self.path.startswith("/api/layout/snap.png"): self.send(layout.SNAP["png"] or b"", "image/png")
+        elif self.path == "/api/report": self.send(report(), "text/plain; charset=utf-8")
         elif self.path == "/debug":
-            fs = sorted([f for f in os.listdir(D) if f.startswith("debug_")], key=lambda f: -os.path.getmtime(os.path.join(D, f)))
+            fs = debug_files()
             rows = []
             for f in fs:
                 t = time.strftime("%H:%M:%S", time.localtime(os.path.getmtime(os.path.join(D, f))))
                 if f.endswith(".png"): rows.append('<h4>%s — %s</h4><img src="/debug/%s" style="max-width:100%%;border:1px solid #888">' % (f, t, f))
-                else: rows.append('<h4>%s — %s</h4><pre>%s</pre>' % (f, t, open(os.path.join(D, f), encoding="utf-8", errors="replace").read()[:3000]))
-            self.send('<meta charset="utf-8"><meta name="viewport" content="width=device-width"><body style="font-family:sans-serif;padding:10px"><h3>ملفات التشخيص</h3>%s</body>' % ("".join(rows) or "لا ملفات بعد"), "text/html; charset=utf-8")
+                else: rows.append('<h4>%s — %s</h4><pre style="white-space:pre-wrap;word-break:break-all">%s</pre>' % (f, t, html.escape(open(os.path.join(D, f), encoding="utf-8", errors="replace").read()[:3000])))
+            bar = ('<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">'
+                   '<button onclick="clr()" style="padding:10px 14px;background:#ef4444;color:#fff;border:0;border-radius:8px">🗑 حذف كل ملفات التشخيص</button>'
+                   '<button onclick="cp()" style="padding:10px 14px;background:#4f46e5;color:#fff;border:0;border-radius:8px">📋 نسخ التقرير</button>'
+                   '<button onclick="location.reload()" style="padding:10px 14px;border-radius:8px">↻ تحديث</button></div>'
+                   '<textarea id="rp" hidden style="width:100%;height:220px;direction:ltr;font-size:12px"></textarea>'
+                   '<script>async function clr(){if(confirm("حذف كل ملفات التشخيص؟")){await fetch("/api/cleardebug",{method:"POST",body:"{}"});location.reload()}}'
+                   'async function cp(){const t=await(await fetch("/api/report")).text();const a=document.getElementById("rp");a.value=t;a.hidden=false;a.select();'
+                   'try{await navigator.clipboard.writeText(t);alert("تم نسخ التقرير؛ الصقه في المحادثة")}catch(e){try{document.execCommand("copy");alert("تم النسخ")}catch(e2){alert("حدّد النص في الصندوق ثم انسخه يدوياً")}}}</script>')
+            self.send('<meta charset="utf-8"><meta name="viewport" content="width=device-width"><body style="font-family:sans-serif;padding:10px"><h3>ملفات التشخيص (' + str(len(fs)) + ')</h3>' + bar + ("".join(rows) or "لا ملفات بعد") + '</body>', "text/html; charset=utf-8")
         elif self.path.startswith("/debug/"):
             f = os.path.basename(self.path[7:]); fp = os.path.join(D, f)
             if f.startswith("debug_") and os.path.exists(fp): self.send(open(fp, "rb").read(), "image/png" if f.endswith(".png") else "text/plain; charset=utf-8")
@@ -259,10 +297,12 @@ class H(BaseHTTPRequestHandler):
                 except Exception as e: layout.SNAP["busy"] = "تعذّر: %s" % e
             threading.Thread(target=_ref, daemon=True).start()
         elif self.path == "/api/clearlog": LOGS.clear(); log("حُذف السجل")
+        elif self.path == "/api/cleardebug": log("حُذفت %d ملفات تشخيص" % clear_debug())
         elif self.path == "/api/tap": shizuku.tap(d["x"], d["y"], False); log("نقر %s,%s" % (d["x"], d["y"]))
         self.send({"ok": True})
 
 if __name__ == "__main__":
+    clear_debug(24 * 3600)      # امسح ملفات التشخيص الأقدم من يوم عند كل تشغيل
     shizuku.GAME[0] = S.get("game_pkg") or guard.PKG; shizuku.CHECK[0] = bool(S.get("game_only", True))
     threading.Thread(target=loop, daemon=True).start()
     log("اللوحة %s تعمل على المنفذ %d" % (VERSION, S["port"]))
