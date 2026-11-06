@@ -16,7 +16,7 @@ if os.path.exists(SF): S.update(json.load(open(SF)))
 shizuku.CFG = S      # تجاوز شاشة اللمس يدوياً من settings.json (touch_path ...)
 ST = {"running": False, "shizuku": False, "last_beat": 0, "last_action": time.time()}
 LAST = {}
-VERSION = "v4.3.9-apk"      # يظهر في أعلى اللوحة وفي أول السجل: غيّره مع كل نسخة جديدة
+VERSION = "v4.3.10-apk"      # يظهر في أعلى اللوحة وفي أول السجل: غيّره مع كل نسخة جديدة
 LASTSHOT = {"png": None, "t": 0}
 LOGS = []; EV = []; EVID = [0]; CUR = [""]; BOOT = time.time()
 CNT = {"ok": 0, "warn": 0, "err": 0, "info": 0}; STAT = {"runs": {}, "errs": {}, "lasterr": {}, "marches": 0}
@@ -59,11 +59,12 @@ def _run_task(key, manual):
             try:
                 entering = guard.NEED_ZOOM[0]
                 if entering: guard.enter(log, S)                     # 1) أغلق النوافذ الإعلانية عند الدخول
+                zoomed = False
                 if S.get("zoom", True) and zoom.need(S):                                      # 2) صغّر القلعة
-                    zoom.zoom_out(log, S, probe=not guard.NEED_ZOOM[0])
+                    zoom.zoom_out(log, S, probe=not guard.NEED_ZOOM[0]); zoomed = True
                     guard.clear(log, S)                               # إعلان ظهر أثناء التصغير؟ أغلقه قبل المهمة
                 elif entering: guard.NEED_ZOOM[0] = False
-                if layout.DATA and (entering or not layout.T[0] or time.time() - layout.T[0] > int(S.get("layout_ttl", 90))):    # 3) حدّد مواقع المباني عند كل دخول وكل 90 ث
+                if layout.DATA and (entering or zoomed or not layout.T[0] or time.time() - layout.T[0] > int(S.get("layout_ttl", 240))):    # 3) حدّد مواقع المباني عند كل دخول وكل 90 ث
                     layout.refresh(log)
                 elif entering and not layout.DATA:
                     log("المباني: لم تُعلَّم أي مبانٍ بعد؛ المهام تستعمل الإحداثيات الثابتة (علّمها مرة واحدة من صفحة /layout)")

@@ -1,7 +1,8 @@
-"""فتح مبنى من المدينة بإعادة اكتشافه بصرياً في كل مرة (v4.3.9).
+"""فتح مبنى من المدينة بإعادة اكتشافه بصرياً في كل مرة (v4.3.10).
 المشكلة: كل مهمة كانت تضغط المبنى ثم إحداثية ثابتة للزر السداسي (إزاحة محفوظة)، فإذا اختلف موضع المبنى أو الزر ولو قليلاً فشلت المهمة.
 الحل: بعد ضغط المبنى (بموضعه المحدَّث من layout) تُكتشف صف الأزرار السداسية الفعلي على الشاشة بلونها، ويُضغط الأول من اليسار (زر التنفيذ) ولا يُضغط زر المعلومات i أقصى اليمين أبداً،
 فإن لم تفتح الشاشة المطلوبة (verify) أُغلقت وجُرّب الزر التالي من اليسار، ثم نقاط ضغط بديلة حول المبنى. لا تتغير باقي منطق المهام."""
+import time
 from shizuku import frame, tapx, nap
 from tasks.saga import has_x, CLOSE_X, TEAL, _blobs
 from tasks.guard import popup_x
@@ -38,15 +39,19 @@ def dismiss(f, s, n=3):
     return f
 
 
-def open_building(log, name, build, hexp, verify, wait=2.5, tries=3):
-    """يضغط المبنى ثم الزر السداسي المناسب حتى تتحقق verify(frame). يرجع آخر لقطة (تفحصها المهمة كالمعتاد)."""
+def open_building(log, name, build, hexp, verify, wait=3.5, tries=3):
+    """يضغط المبنى ثم الزر السداسي المناسب حتى تتحقق verify(frame). يرجع آخر لقطة (تفحصها المهمة كالمعتاد).
+    v4.3.10: بدل انتظار ثابت (1.2 ثم 2.5-3 ث) يفحص الشاشة كل نصف ثانية ويتابع فور ظهور الأزرار / فتح الشاشة (الحد الأقصى كما كان أو أكثر)."""
     f = frame(); s = f.s; seen_row = False
     for ox, oy in JIT:
         bx, by = int(build[0]) + ox, int(build[1]) + oy
         for k in range(tries):
-            tapx(bx, by, s); nap(1.2); f = frame()
-            if verify(f): return f
-            row = hex_row(f, bx, by)
+            tapx(bx, by, s); t0 = time.time(); row = []
+            while True:                                                               # انتظر ظهور صف الأزرار (أو فتح الشاشة مباشرة)
+                nap(0.5); f = frame()
+                if verify(f): return f
+                row = hex_row(f, bx, by)
+                if row or time.time() - t0 > 1.8: break
             if row:
                 seen_row = True
                 order = row[:-1] if len(row) >= 3 else row[:1]          # زر المعلومات (i) أقصى اليمين: لا يُضغط أبداً؛ والباقي من اليسار (زر التنفيذ أولاً)
@@ -54,8 +59,11 @@ def open_building(log, name, build, hexp, verify, wait=2.5, tries=3):
                 tx, ty = order[k]
             elif ox == 0 and oy == 0 and k == 0: tx, ty = int(hexp[0]), int(hexp[1])         # لم يُكتشف صف: الموضع المتوقع كاحتياط
             else: break
-            tapx(tx, ty, s); nap(wait); f = frame()
-            if verify(f): return f
+            tapx(tx, ty, s); t0 = time.time()
+            while True:                                                               # انتظر فتح الشاشة المطلوبة
+                nap(0.5); f = frame()
+                if verify(f): return f
+                if time.time() - t0 > wait or (time.time() - t0 > 0.9 and popup_x(f)): break       # ظهرت نافذة تنبيه/معلومات = الزر خاطئ: لا داعي للانتظار
             if k == 0 or row: log("%s: الزر عند (%d,%d) لم يفتح الشاشة المطلوبة؛ أجرّب غيره" % (name, tx, ty))
             f = dismiss(f, s)                                                         # أغلق ما فُتح بالخطأ (معلومات/ترقية/نافذة تنبيه) قبل المحاولة التالية
         if seen_row: break                                                                # الصف ظهر وجُرّبت أزراره: لا فائدة من نقاط بديلة
