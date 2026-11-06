@@ -1,9 +1,10 @@
-"""فتح مبنى من المدينة بإعادة اكتشافه بصرياً في كل مرة (v4.3.8).
+"""فتح مبنى من المدينة بإعادة اكتشافه بصرياً في كل مرة (v4.3.9).
 المشكلة: كل مهمة كانت تضغط المبنى ثم إحداثية ثابتة للزر السداسي (إزاحة محفوظة)، فإذا اختلف موضع المبنى أو الزر ولو قليلاً فشلت المهمة.
 الحل: بعد ضغط المبنى (بموضعه المحدَّث من layout) تُكتشف صف الأزرار السداسية الفعلي على الشاشة بلونها، ويُضغط الأول من اليسار (زر التنفيذ) ولا يُضغط زر المعلومات i أقصى اليمين أبداً،
 فإن لم تفتح الشاشة المطلوبة (verify) أُغلقت وجُرّب الزر التالي من اليسار، ثم نقاط ضغط بديلة حول المبنى. لا تتغير باقي منطق المهام."""
 from shizuku import frame, tapx, nap
 from tasks.saga import has_x, CLOSE_X, TEAL, _blobs
+from tasks.guard import popup_x
 
 JIT = [(0, 0), (30, -18), (45, -28), (-25, 10), (15, -5)]      # نقاط ضغط بديلة حول المبنى
 
@@ -26,6 +27,17 @@ def hex_row(f, bx, by):
     return best if len(best) >= 2 else []
 
 
+def dismiss(f, s, n=3):
+    """يغلق نوافذ المعلومات/التنبيه (معين أحمر بعلامة X) وشاشات الزاوية العليا اليسرى إن وُجدت؛ يرجع آخر لقطة. لا يضغط أزرار النافذة (تأكيد/انتقال)."""
+    for _ in range(n):
+        p = popup_x(f)
+        if p: tapx(p[0], p[1], s)
+        elif has_x(f): tapx(*CLOSE_X, s)
+        else: break
+        nap(1.2); f = frame()
+    return f
+
+
 def open_building(log, name, build, hexp, verify, wait=2.5, tries=3):
     """يضغط المبنى ثم الزر السداسي المناسب حتى تتحقق verify(frame). يرجع آخر لقطة (تفحصها المهمة كالمعتاد)."""
     f = frame(); s = f.s; seen_row = False
@@ -45,8 +57,6 @@ def open_building(log, name, build, hexp, verify, wait=2.5, tries=3):
             tapx(tx, ty, s); nap(wait); f = frame()
             if verify(f): return f
             if k == 0 or row: log("%s: الزر عند (%d,%d) لم يفتح الشاشة المطلوبة؛ أجرّب غيره" % (name, tx, ty))
-            for _ in range(2):
-                if not has_x(f): break
-                tapx(*CLOSE_X, s); nap(1.2); f = frame()
+            f = dismiss(f, s)                                                         # أغلق ما فُتح بالخطأ (معلومات/ترقية/نافذة تنبيه) قبل المحاولة التالية
         if seen_row: break                                                                # الصف ظهر وجُرّبت أزراره: لا فائدة من نقاط بديلة
     return f

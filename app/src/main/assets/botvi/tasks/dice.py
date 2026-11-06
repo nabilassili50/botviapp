@@ -1,7 +1,8 @@
-"""لوحة النرد (القبة الزجاجية): رمي مجاني فقط، ثم \"بدء\" لكل معركة تظهر. لا يرمي بالعملة أبداً."""
+"""لوحة النرد (القبة الزجاجية): رمي مجاني فقط، ثم "بدء" لكل معركة تظهر. لا يرمي بالعملة أبداً."""
 import os, time
 from shizuku import frame, tapx, screencap, nap
-from tasks.nav import open_building
+from tasks.nav import open_building, dismiss
+from tasks.guard import popup_x
 from tasks.saga import has_x, CLOSE_X
 
 GOLD = lambda r, g, b: 150 < r < 255 and 90 < g < 190 and b < 90 and r > g + 40
@@ -29,6 +30,7 @@ def settle(secs=40):
     t = time.time()
     while time.time() - t < secs:
         f = frame()
+        if popup_x(f): dismiss(f, f.s, 1); continue                       # نافذة "لا يوجد ما يكفي من عملات الحظ" وأمثالها: أغلقها بالمعين (لا تضغط "انتقال")
         if board(f) and (free_roll(f) or battle(f) or paid_roll(f)): return f
         if not board(f) and time.time() - t > 10: tapx(640, 760, f.s)   # تجاوز شاشة نتيجة المعركة/المكافأة
         nap(2.5)
