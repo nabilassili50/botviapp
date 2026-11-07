@@ -1,4 +1,4 @@
-"""هدايا التحالف — v4.3.6.
+"""هدايا التحالف — v4.3.13.
 المسار (من لقطاتك): المدينة ← زر التحالف في الشريط السفلي ← زر "مستوى الهدية" ← شاشة هدايا التحالف:
   تبويب "هدية التحالف": زر الصندوق ذي السهم (فتح الكل) ثم زر السلة (حذف المفتوح)،
   ثم تبويب "صندوق المكافآت": الشيء نفسه (فارغ = لا يفعل شيئاً).
@@ -16,7 +16,7 @@ BRIGHT = lambda r, g, b: r < 130 and g > 140 and b > 190                       #
 BROWN = lambda r, g, b: 120 < r < 200 and 65 < g < 130 and 25 < b < 85 and r > g + 30
 GOLD = lambda r, g, b: 150 < r < 255 and 90 < g < 190 and b < 90 and r > g + 40
 
-ALLIANCE_BTN, GIFT_LEVEL_BTN = (680, 752), (343, 305)
+ALLIANCE_BTNS, GIFT_LEVEL_BTN = [(672, 756), (727, 722)], (343, 305)   # شعار التحالف ثم أيقونة الهدية المجاورة (احتياط إن لم تفتح الأولى التحالف)
 OPEN_ALL, TRASH = (213, 172), (340, 172)
 TAB_GIFT, TAB_REWARD = (630, 270), (308, 270)
 ROWS = [(150, 310, 295, 367), (150, 433, 295, 490), (150, 557, 295, 614), (150, 681, 295, 738)]
@@ -43,13 +43,13 @@ def close_all(n=4):
 
 
 def open_gifts(f):
-    s = f.s
-    for _ in range(5):
+    s = f.s; n = 0
+    for _ in range(6):
         if gifts_screen(f): return f
         if alliance_screen(f): tapx(*GIFT_LEVEL_BTN, s); nap(1.8); f = frame(); continue
         if has_x(f): tapx(*CLOSE_X, s); nap(1.2); f = frame(); continue          # شاشة أخرى: أغلقها
         if not city(f): return None
-        tapx(*ALLIANCE_BTN, s); nap(1.8); f = frame()
+        tapx(*ALLIANCE_BTNS[n % 2], s); n += 1; nap(1.8); f = frame()
     return f if gifts_screen(f) else None
 
 
