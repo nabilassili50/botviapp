@@ -32,17 +32,27 @@ input,select{width:100%;padding:10px;border-radius:8px;border:1px solid var(--b)
 .fg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}.fg label{font-size:12px;color:var(--m)}.fg select,.fg input{color:var(--t)}
 .tk{flex-wrap:wrap}.iv{display:flex;align-items:center;gap:4px}.iv input{width:62px;margin:0;padding:6px;text-align:center}.iv small{display:inline}
 .le{color:#dc2626!important;font-size:11px;margin-top:2px}
+
+body{-webkit-tap-highlight-color:transparent;overscroll-behavior-y:contain}
+button{cursor:pointer;transition:transform .08s,opacity .15s,background .2s}button:active{transform:scale(.96)}button:disabled{opacity:.55}
+#dashboard,#tasksp,#logsp,#gear,#diag{animation:fd .18s ease}@keyframes fd{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.card{box-shadow:0 1px 3px #0001}.btn{min-height:40px}.mini{min-height:30px;min-width:34px}.btn.hb{background:rgba(255,255,255,.22);border:1px solid rgba(255,255,255,.55)}
+#toasts{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;z-index:99;pointer-events:none;align-items:center}
+.toast{background:#1e293b;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;box-shadow:0 6px 20px #0006;animation:fd .2s}.toast.ok{background:#15803d}.toast.bad{background:#b91c1c}
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}.gi{display:block;border:1px solid var(--b);border-radius:8px;overflow:hidden;color:var(--t);text-decoration:none;background:var(--bg)}
+.gi img{aspect-ratio:16/10;object-fit:cover;width:100%;border-radius:0}.gi small{display:block;padding:4px 6px;color:var(--m);font-size:11px;word-break:break-all}
+nav{scrollbar-width:none}nav::-webkit-scrollbar{display:none}@media(max-width:600px){nav{position:fixed;top:auto;bottom:0;left:0;right:0;z-index:20;border-top:1px solid var(--b);border-bottom:0;justify-content:space-around}nav button{padding:10px 8px;font-size:13px}main{padding-bottom:70px}}
 </style></head><body>
-<nav id="nav"></nav><main>
+<nav id="nav"></nav><div id="toasts"></div><main>
 <div id="dashboard">
 <div class="hero hrow"><div><h2 style="margin:0">لوحة التحكم <small id="ver" style="font-size:13px;opacity:.85"></small></h2><small id="sub"></small></div>
 <div class="acts"><button class="btn" style="background:#16a34a" onclick="run(true)">▶ تشغيل</button><button class="btn r" onclick="run(false)">■ إيقاف</button><button class="btn" style="background:#475569" onclick="shot()">لقطة</button><button class="btn" style="background:#0ea5e9" onclick="post('/api/runnow',{key:'zoom'})">تصغير القلعة</button></div></div>
-<div class="chips" id="chips"></div><div class="g" id="kpi"></div>
+<div class="chips" id="chips"></div><div class="g" id="kpi"></div><div id="lasterr" style="margin-top:10px"></div>
 <div class="cols"><div class="card feed"><div class="fh"><b>الأحداث المباشرة</b><span id="flt"></span><select id="tsel" onchange="F.task=this.value;drawEv()"></select></div><div id="ev"></div></div>
 <div class="side"><div class="card"><b>حالة المهام</b><div id="tt"></div></div>
 <div class="card"><div class="fh"><b>الشاشة</b><label style="font-size:12px"><input id="auto" type="checkbox" style="width:auto;margin:0 4px"> تحديث تلقائي (5ث)</label></div><small id="shotcap" style="color:var(--m);display:block;margin-bottom:6px"></small><img id="scr"></div></div></div></div>
 <div id="tasksp" hidden><div class="hero hrow"><div><h2 style="margin:0">المهام</h2><small id="tsum"></small></div>
-<input id="tq" placeholder="ابحث عن مهمة..." style="max-width:240px;margin:0" oninput="TQ=this.value;drawT(TK,true)"></div>
+<input id="tq" placeholder="ابحث عن مهمة..." style="max-width:240px;margin:0" oninput="TQ=this.value;drawT(TK,true)"><button class="btn hb" onclick="bulk(true)">تفعيل الكل</button><button class="btn hb" onclick="bulk(false)">تعطيل الكل</button></div>
 <div class="cols"><div class="card"><div class="fh"><span id="tfl"></span><small style="color:var(--m)">الضغط على اسم المهمة يعرض أحداثها</small></div><div id="tl"></div></div>
 <div class="side"><div class="card"><b>جمع الموارد</b><div class="fg"><label>نوع المورد<select id="gtype" onchange="setG()"><option value="stone">حجر</option><option value="wood">خشب</option><option value="ore">حديد</option><option value="food">قمح</option><option value="gold">ذهب</option><option value="any">أي نوع</option></select></label>
 <label>المستوى (1-5)<select id="glevel" onchange="setG()"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label>
@@ -51,6 +61,10 @@ input,select{width:100%;padding:10px;border-radius:8px;border:1px solid var(--b)
 <div class="card"><b>تدريب القوات</b><div class="fg"><label>نوع القوات<select id="ttype" onchange="setT()"><option value="infantry">مشاة</option><option value="archer">رماة</option><option value="cavalry">فرسان</option><option value="siege">محاصِرون</option></select></label>
 <label>الدرجة<select id="ttier" onchange="setT()"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label></div></div></div></div></div>
 <div id="logsp" hidden><div class="card"><div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn" onclick="run(true)">تشغيل</button><button class="btn" style="background:#ef4444" onclick="run(false)">إيقاف</button><button class="btn" onclick="copyLog()">نسخ</button><button class="btn" style="background:#475569" onclick="clearLog()">حذف</button></div><div id="logs"></div></div></div>
+<div id="diag" hidden><div class="hero hrow"><div><h2 style="margin:0">التشخيص</h2><small>اعرف سبب فشل أي مهمة بسرعة</small></div>
+<div class="acts"><button class="btn hb" onclick="dgRefresh()">↻ حدّد المباني الآن</button><button class="btn" style="background:#475569" onclick="dgReport()">📋 تقرير شامل</button><button class="btn r" onclick="dgClear()">🗑 مسح الملفات</button></div></div>
+<div class="card"><b>حالة المباني</b><small style="display:block;color:var(--m);margin:4px 0 8px">النقطة الخضراء: موقع مؤكد · الحمراء: غير مُعلَّم أو غير موجود أو مُقدَّر (أعد التعليم من تبويب «معايرة المباني») · «▶ جرّب» يشغّل المهمة الآن ويحفظ لقطة عند الفشل</small><div id="dgb"></div></div>
+<div class="card"><div class="fh"><b>آخر ملفات التشخيص</b><small id="dgn" style="color:var(--m)"></small></div><div id="dgf" class="gal"></div></div></div>
 <div id="gear" hidden><div class="hero"><h2 style="margin:0">إعدادات المعدات</h2></div><div class="card" id="sw"></div>
 <div class="card"><label>وقت الخمول (ثوانٍ)<input id="idle" type="number"></label>
 <label>طقم الخمول<select id="set"><option>Gathering</option><option>Hunting</option><option>Building</option><option>Research</option></select></label>
@@ -61,10 +75,10 @@ input,select{width:100%;padding:10px;border-radius:8px;border:1px solid var(--b)
 <div class="fg"><label>الدقة<input id="vdsize" value="1280x800" onchange="post('/api/settings',{vd_size:this.value})"></label><label>DPI<input id="vddpi" type="number" value="240" onchange="post('/api/settings',{vd_dpi:+this.value})"></label></div>
 <p><button class="btn" id="vdtest" onclick="vd('test')">اختبار</button></p><div id="vdrep"></div></div></div></main>
 <script>
-const $=i=>document.getElementById(i);let S={};
-const tabs={dashboard:"الرئيسية",tasksp:"المهام",logsp:"السجلات",gear:"المعدات"};
+const $=i=>document.getElementById(i);let S={},ST_RUN=false,BUSY=false,SIG="";
+const tabs={dashboard:"الرئيسية",tasksp:"المهام",logsp:"السجلات",diag:"التشخيص",gear:"المعدات"};
 $("nav").innerHTML=Object.entries(tabs).map(([k,v])=>`<button data-k="${k}" onclick="tab('${k}')">${v}</button>`).join("");
-function tab(k){for(const t in tabs){$(t).hidden=t!=k}document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b.dataset.k==k))}tab("dashboard");
+function tab(k){for(const t in tabs){$(t).hidden=t!=k}document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b.dataset.k==k));window.scrollTo(0,0);if(k=="diag")drawDiag()}tab("dashboard");
 const SW={game_only:"البوت لا يضغط إلا واللعبة في الواجهة",zoom:"تصغير القلعة تلقائياً عند الدخول للعبة",auto_switch:"تبديل المعدات تلقائياً",auto_upgrade:"ترقية المعدات تلقائياً",auto_craft:"صناعة المعدات تلقائياً",cabinet:"توسيع الخزانة",guard:"إغلاق الإعلانات والنوافذ تلقائياً",lunar_swap:"المصنع القمري: تبديل لطقم التصنيع قبل التصنيع",lunar_skip_short:"المصنع القمري: تخطّي عند نقص الموارد"};
 function draw(){$("sw").innerHTML=Object.entries(SW).map(([k,v])=>`<div class="row"><span>${v}</span><button class="sw ${S[k]?"on":""}" onclick="S['${k}']=!S['${k}'];draw()"></button></div>`).join("")}
 let TF="all",TQ="";
@@ -87,21 +101,36 @@ const hm=t=>t?new Date(t*1000).toLocaleTimeString("ar",{hour:"2-digit",minute:"2
 function drawEv(){const L={all:"الكل",ok:"نجاح",warn:"تحذير",err:"أخطاء"};
 $("flt").innerHTML=Object.entries(L).map(([k,v])=>`<button class="f ${F.lv==k?"on":""}" onclick="F.lv='${k}';drawEv()">${v}</button>`).join("");
 const o=$("tsel"),cur=F.task;if(o.options.length!=Object.keys(NM).length+1){o.innerHTML='<option value="">كل المصادر</option>'+Object.entries(NM).map(([k,v])=>`<option value="${k}">${esc(v)}</option>`).join("")}o.value=cur;
-const E=EVS.filter(e=>(F.lv=="all"||e.lv==F.lv)&&(!F.task||e.k==F.task)).slice(-200).reverse();
+const E=EVS.filter(e=>(F.lv=="all"||e.lv==F.lv)&&(!F.task||e.k==F.task)).slice(-120).reverse();
 $("ev").innerHTML=E.length?E.map(e=>`<div class="er ${e.lv}"><time>${e.t}</time><i class="dt ${e.lv}"></i>${e.k?`<span class="tg">${esc(NM[e.k]||e.k)}</span>`:""}<span>${esc(e.m)}</span></div>`).join(""):'<small style="color:var(--m)">لا أحداث بعد</small>'}
 function dash(r){const st=r.st,sx=r.stat,now=r.now;NM=r.names;TK=r.tasks;
 $("sub").textContent=st.running?("يعمل منذ "+dur(now-(st.since||now))):"متوقف";
-const front=st.front,cur=r.current;
-$("chips").innerHTML=[[st.shizuku?"ok":"bad","Shizuku: "+(st.shizuku?"متصل":"غير متصل")],[st.running?"ok":"w","البوت: "+(st.running?"يعمل":"متوقف")],[st.shizuku?(front?"ok":"w"):"w","اللعبة: "+(st.shizuku?(front?"في الواجهة":"خارج الواجهة"):"؟")],[cur?"run":"w","الآن: "+(cur?esc(NM[cur]||cur):"لا شيء")],["w","آخر نبضة "+hm(st.last_beat)]].concat(r.vd&&r.vd.on?[["run","الشاشة الثانوية #"+r.vd.id]]:[]).map(c=>`<span class="chip ${c[0]}">${c[1]}</span>`).join("");
+ST_RUN=!!st.running;const front=st.front,cur=r.current;const nx=r.tasks.filter(t=>t.on&&t.next>0).sort((a,b)=>a.next-b.next)[0];
+$("chips").innerHTML=[[st.shizuku?"ok":"bad","Shizuku: "+(st.shizuku?"متصل":"غير متصل")],[st.running?"ok":"w","البوت: "+(st.running?"يعمل":"متوقف")],[st.shizuku?(front?"ok":"w"):"w","اللعبة: "+(st.shizuku?(front?"في الواجهة":"خارج الواجهة"):"؟")],[cur?"run":"w","الآن: "+(cur?esc(NM[cur]||cur):"لا شيء")],["w","آخر نبضة "+hm(st.last_beat)]].concat(nx?[["w","التالي: "+esc(nx.name)+" بعد "+dur(nx.next)]]:[]).concat(r.vd&&r.vd.on?[["run","الشاشة الثانوية #"+r.vd.id]]:[]).map(c=>`<span class="chip ${c[0]}">${c[1]}</span>`).join("");
 $("kpi").innerHTML=[["مهام نُفّذت",sx.runs],["مسيرات أُرسلت",sx.marches],["نجاح",sx.cnt.ok],["تحذيرات",sx.cnt.warn],["أخطاء",sx.cnt.err]].map(k=>`<div class="card"><small>${k[0]}</small><b>${k[1]}</b></div>`).join("");
 $("tt").innerHTML=r.tasks.map(t=>{const bad=t.errat&&t.errat>t.last;const b=t.st=="run"?'<span class="bd run">يعمل الآن</span>':t.st=="off"?'<span class="bd off">معطّل</span>':bad?'<span class="bd er2">فشل آخر مرة</span>':'<span class="bd">ينتظر</span>';
 return `<div class="tr"><div style="flex:1;cursor:pointer" onclick="F.task='${t.key}';drawEv()"><b>${esc(t.name)}</b><small>آخر: ${hm(t.last)} · التالي: ${t.on&&t.next?"بعد "+dur(t.next):"-"} · ${t.runs} تشغيل${t.errs?" · "+t.errs+" أخطاء":""}</small></div>${b}<button class="mini" onclick="post('/api/runnow',{key:'${t.key}'})">▶</button></div>`}).join("");
-EVS=r.events;drawEv();if(r.vd)drawVd(r.vd)}
-async function load(first){const r=await(await fetch("/api/state")).json();$("ver").textContent=r.version||"";document.title="Botvi "+(r.version||"");drawT(r.tasks);dash(r);
-{const L=$("logs"),b=L.scrollTop+L.clientHeight>=L.scrollHeight-30;L.textContent=r.logs.join("\n");if(b)L.scrollTop=L.scrollHeight}if(first){S=r.settings;$("ttype").value=S.train_type||"infantry";$("ttier").value=S.train_tier||4;$("gtype").value=S.gather_type||"stone";$("glevel").value=S.gather_level||4;$("gcount").value=S.gather_count||1;$("gswipes").value=S.gather_swipes==null?6:S.gather_swipes;$("idle").value=S.idle_time;$("vdsize").value=S.vd_size||"1280x800";$("vdzoom").classList.toggle("on",S.vd_zoom!==false);if(S.vd_zoom==null)S.vd_zoom=true;$("vddpi").value=S.vd_dpi||240;$("set").value=S.idle_set;draw()}}
-async function post(u,d){await fetch(u,{method:"POST",body:JSON.stringify(d)});load()}
-function copyLog(){const t=$("logs").textContent;if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(t).then(()=>alert("تم النسخ"),()=>cp2(t));else cp2(t)}
-function cp2(t){const a=document.createElement("textarea");a.value=t;document.body.appendChild(a);a.select();try{document.execCommand("copy");alert("تم النسخ")}catch(e){alert("تعذّر النسخ")}a.remove()}
+EVS=r.events;drawEv();if(r.vd)drawVd(r.vd);
+const er=r.events.filter(e=>e.lv=="err").slice(-3).reverse();$("lasterr").innerHTML=er.length?'<div class="card"><b>آخر الأخطاء</b>'+er.map(e=>`<div class="er err"><time>${e.t}</time>${e.k?`<span class="tg">${esc(NM[e.k]||e.k)}</span>`:""}<span>${esc(e.m)}</span></div>`).join("")+'</div>':""}
+async function load(first){if(BUSY)return;BUSY=true;try{await load1(first)}catch(e){}BUSY=false}
+const sigOf=r=>JSON.stringify([r.st,r.stat,r.current,r.vd,r.tasks.map(t=>[t.key,t.on,t.int,t.last,Math.floor(t.next/20),t.st,t.runs,t.errs,t.errat]),r.events.length,r.events.length&&r.events[r.events.length-1].m]);
+async function load1(first){const r=await(await fetch("/api/state")).json();const sg=sigOf(r),same=!first&&sg==SIG;SIG=sg;$("ver").textContent=r.version||"";document.title="Botvi "+(r.version||"");if(!same){drawT(r.tasks);dash(r)}
+{const L=$("logs"),b=L.scrollTop+L.clientHeight>=L.scrollHeight-30;const lt=r.logs.join("\n");if(lt!==L._t){L._t=lt;L.textContent=lt;if(b)L.scrollTop=L.scrollHeight}}if(first){S=r.settings;$("ttype").value=S.train_type||"infantry";$("ttier").value=S.train_tier||4;$("gtype").value=S.gather_type||"stone";$("glevel").value=S.gather_level||4;$("gcount").value=S.gather_count||1;$("gswipes").value=S.gather_swipes==null?6:S.gather_swipes;$("idle").value=S.idle_time;$("vdsize").value=S.vd_size||"1280x800";$("vdzoom").classList.toggle("on",S.vd_zoom!==false);if(S.vd_zoom==null)S.vd_zoom=true;$("vddpi").value=S.vd_dpi||240;$("set").value=S.idle_set;draw()}}
+function toast(m,t){const d=document.createElement("div");d.className="toast "+(t||"");d.textContent=m;$("toasts").appendChild(d);setTimeout(()=>d.remove(),2600)}
+async function post(u,d,msg){try{const r=await fetch(u,{method:"POST",body:JSON.stringify(d)});if(!r.ok)throw 0;toast(msg||(u=="/api/settings"?"حُفظ":"تم"),"ok")}catch(e){toast("تعذّر التنفيذ","bad")}load()}
+function bulk(on){const d={};TK.forEach(t=>d[t.key]=on);post("/api/settings",d,on?"فُعّلت كل المهام":"عُطّلت كل المهام")}
+let DGB=false;async function drawDiag(){if(DGB)return;DGB=true;try{const[a,b]=await Promise.all([fetch("/api/layout").then(r=>r.json()),fetch("/api/debuglist").then(r=>r.json())]);
+$("dgb").innerHTML=a.items.map(i=>{const T=TK.find(t=>t.key==i.key),bad=T&&T.errat&&T.errat>T.last,good=i.learned&&i.loc&&i.loc[2]<99&&i.loc[2]<=18;
+const loc=i.loc?`(${i.loc[0]},${i.loc[1]}) · ${i.loc[2]>=99?"مُقدَّر":"ثقة "+i.loc[2]}`:(i.learned?"لم يُحدَّد بعد":"لم يُعلَّم");const st=i.state=="alert"?" · عليه فقاعة !":i.state=="idle"?" · zZ":"";
+return `<div class="tr tk"><span class="dot ${good?"ok":""}"></span><div style="flex:1;min-width:150px"><b>${esc(i.name)}</b><small>${loc}${st}</small>${bad?`<small class="le">${esc(T.lasterr.slice(0,110))}</small>`:""}</div><button class="mini" onclick="dgTry('${i.key}')">▶ جرّب</button></div>`}).join("")||'<small style="color:var(--m)">لا مبانٍ</small>';
+$("dgn").textContent=b.files.length+" ملف";
+$("dgf").innerHTML=b.files.slice(0,12).map(f=>`<a class="gi" href="/debug/${f.f}" target="_blank">${f.png?`<img loading="lazy" src="/debug/${f.f}">`:""}<small>${esc(f.f.replace("debug_",""))} · ${f.t}</small></a>`).join("")||'<small style="color:var(--m)">لا ملفات تشخيص</small>'}catch(e){toast("تعذّر جلب بيانات التشخيص","bad")}DGB=false}
+async function dgTry(k){await post("/api/runnow",{key:k},"بدأت المهمة؛ تحدَّث النتيجة بعد قليل");setTimeout(()=>{if(!$("diag").hidden)drawDiag()},15000)}
+async function dgRefresh(){await post("/api/layout/refresh",{},"افتح اللعبة؛ سيُحدَّد بعد 8 ث");setTimeout(()=>{if(!$("diag").hidden)drawDiag()},13000)}
+async function dgReport(){try{cp2(await(await fetch("/api/report")).text())}catch(e){toast("تعذّر جلب التقرير","bad")}}
+async function dgClear(){if(confirm("حذف كل ملفات التشخيص؟")){await post("/api/cleardebug",{},"حُذفت ملفات التشخيص");drawDiag()}}
+function copyLog(){const t=$("logs").textContent;if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(t).then(()=>toast("تم النسخ","ok"),()=>cp2(t));else cp2(t)}
+function cp2(t){const a=document.createElement("textarea");a.value=t;document.body.appendChild(a);a.select();try{document.execCommand("copy");toast("تم النسخ","ok")}catch(e){toast("تعذّر النسخ","bad")}a.remove()}
 async function clearLog(){if(confirm("حذف السجل؟")){await fetch("/api/clearlog",{method:"POST",body:"{}"});load()}}
 function run(on){post("/api/run",{on})}
 function saveS(){S.idle_time=+$("idle").value;S.idle_set=$("set").value;const d={...S};delete d.vdisplay;delete d.vd_prev_fr;post("/api/settings",d)}
@@ -113,5 +142,5 @@ if(!b.size){$("shotcap").textContent="لا توجد لقطة بعد: تظهر ب
 if(SU)URL.revokeObjectURL(SU);SU=URL.createObjectURL(b);$("scr").src=SU;
 $("shotcap").textContent=l?"مباشر":"آخر لقطة للعبة قبل "+dur(a)+" (اللعبة ليست في الواجهة الآن)"}catch(e){$("shotcap").textContent="تعذّر جلب اللقطة"}}
 setInterval(()=>{if($("auto").checked)shot()},5000);
-load(true);setInterval(()=>load(false),3000);
+load(true);(function tick(){setTimeout(async()=>{if(!document.hidden)await load(false);tick()},document.hidden?8000:(ST_RUN?2000:3500))})();document.addEventListener("visibilitychange",()=>{if(!document.hidden)load(false)});
 </script></body></html>

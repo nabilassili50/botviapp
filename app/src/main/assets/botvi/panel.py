@@ -16,7 +16,7 @@ if os.path.exists(SF): S.update(json.load(open(SF)))
 shizuku.CFG = S      # تجاوز شاشة اللمس يدوياً من settings.json (touch_path ...)
 ST = {"running": False, "shizuku": False, "last_beat": 0, "last_action": time.time()}
 LAST = {}
-VERSION = "v4.3.10-apk"      # يظهر في أعلى اللوحة وفي أول السجل: غيّره مع كل نسخة جديدة
+VERSION = "v4.3.11-apk"      # يظهر في أعلى اللوحة وفي أول السجل: غيّره مع كل نسخة جديدة
 LASTSHOT = {"png": None, "t": 0}
 LOGS = []; EV = []; EVID = [0]; CUR = [""]; BOOT = time.time()
 CNT = {"ok": 0, "warn": 0, "err": 0, "info": 0}; STAT = {"runs": {}, "errs": {}, "lasterr": {}, "marches": 0}
@@ -237,9 +237,10 @@ class H(BaseHTTPRequestHandler):
             items = []
             for k in layout.MAP:
                 d = layout.DATA.get(k)
-                items.append({"key": k, "name": NAMES.get(k, k), "learned": bool(d), "ref": d["ref"] if d else None, "loc": list(layout.LOC[k]) if k in layout.LOC else None})
+                items.append({"key": k, "name": NAMES.get(k, k), "learned": bool(d), "ref": d["ref"] if d else None, "loc": list(layout.LOC[k]) if k in layout.LOC else None, "state": layout.STATE.get(k, "")})
             self.send({"items": items, "snap_t": int(layout.SNAP["t"]), "busy": layout.SNAP["busy"]})
         elif self.path.startswith("/api/layout/snap.png"): self.send(layout.SNAP["png"] or b"", "image/png")
+        elif self.path == "/api/debuglist": self.send({"files": [{"f": f, "t": time.strftime("%H:%M:%S", time.localtime(os.path.getmtime(os.path.join(D, f)))), "png": f.endswith(".png")} for f in debug_files()[:30]]})
         elif self.path == "/api/report": self.send(report(), "text/plain; charset=utf-8")
         elif self.path == "/debug":
             fs = debug_files()
